@@ -78,7 +78,7 @@ def input_url_handler(update: Update, context: CallbackContext):
 
 
 if __name__ == '__main__':
-    updater: Updater = Updater(token='1784910419:AAEUtuB6YEH8jRsJkBYtwD6uUtZlJXl020w', use_context=True)
+    updater: Updater = Updater(token=os.environ['TELEGRAM_BOT_TOKEN'], use_context=True)
     dp = updater.dispatcher
 
     # add handler
