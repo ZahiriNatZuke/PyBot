@@ -5,27 +5,29 @@ from telegram.ext import Updater, CommandHandler, CallbackContext, CallbackQuery
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton
 import qrcode
 import os
+import pyshorteners
 
 INPUT_TEXT = 0
+INPUT_URL = 1
 
 
 def start(update: Update, context: CallbackContext) -> None:
     update.message.reply_text(
-        text='Hello, welcome, what do you want to do?\n\n Use /qr to generate a QR code.',
+        text='Hello, welcome, what do you want to do?',
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton(text='Generate QR', callback_data='qr')],
-            [InlineKeyboardButton(text='GitHub Dev', url='https://github.com/ZahiriNatZuke')]
+            [InlineKeyboardButton(text='Shorten URL', callback_data='short_url')]
         ])
     )
 
 
-def hello(update: Update, context: CallbackContext) -> None:
-    update.message.reply_text(f'Hello {update.effective_user.full_name}')
-
-
-def qr_command_handler(update: Update, context: CallbackContext) -> int:
-    update.message.reply_text('Send me the text to generate the QR code.')
-    return INPUT_TEXT
+def about(update: Update, context: CallbackContext) -> None:
+    update.message.reply_text(
+        text='Link to developer\'s GitHub profile.',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton(text='GitHub Dev', url='https://github.com/ZahiriNatZuke')]
+        ])
+    )
 
 
 def qr_callback_handler(update: Update, context: CallbackContext) -> int:
@@ -33,6 +35,13 @@ def qr_callback_handler(update: Update, context: CallbackContext) -> int:
     query.answer()
     query.edit_message_text(text='Send me the text to generate the QR code.')
     return INPUT_TEXT
+
+
+def short_url_callback_handler(update: Update, context: CallbackContext) -> int:
+    query = update.callback_query
+    query.answer()
+    query.edit_message_text(text='Send me a link to shorten it.')
+    return INPUT_URL
 
 
 def generate_qr(text: str) -> str:
@@ -56,21 +65,34 @@ def input_text_handler(update: Update, context: CallbackContext):
     return ConversationHandler.END
 
 
+def input_url_handler(update: Update, context: CallbackContext):
+    url = update.message.text
+
+    s = pyshorteners.Shortener()
+    short_url = s.chilpit.short(url)
+
+    chat = update.message.chat
+    chat.send_action(action=ChatAction.TYPING, timeout=None)
+    chat.send_message(text=short_url)
+    return ConversationHandler.END
+
+
 if __name__ == '__main__':
     updater: Updater = Updater(token='1784910419:AAEUtuB6YEH8jRsJkBYtwD6uUtZlJXl020w', use_context=True)
     dp = updater.dispatcher
 
     # add handler
     dp.add_handler(CommandHandler('start', start))
-    dp.add_handler(CommandHandler('hello', hello))
+    dp.add_handler(CommandHandler('about', about))
 
     dp.add_handler(ConversationHandler(
         entry_points=[
-            CommandHandler('qr', qr_command_handler),
-            CallbackQueryHandler(pattern='qr', callback=qr_callback_handler)
+            CallbackQueryHandler(pattern='qr', callback=qr_callback_handler),
+            CallbackQueryHandler(pattern='short_url', callback=short_url_callback_handler)
         ],
         states={
-            INPUT_TEXT: [MessageHandler(Filters.text, input_text_handler)]
+            INPUT_TEXT: [MessageHandler(Filters.text, input_text_handler)],
+            INPUT_URL: [MessageHandler(Filters.text, input_url_handler)]
         },
         fallbacks=[]
     ))
