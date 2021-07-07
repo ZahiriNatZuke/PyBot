@@ -1,6 +1,8 @@
 from telegram import Update
 from telegram import ChatAction
-from telegram.ext import Updater, CommandHandler, CallbackContext, ConversationHandler, MessageHandler, Filters
+from telegram.ext import Updater, CommandHandler, CallbackContext, CallbackQueryHandler, ConversationHandler, \
+    MessageHandler, Filters
+from telegram import InlineKeyboardMarkup, InlineKeyboardButton
 import qrcode
 import os
 
@@ -8,7 +10,13 @@ INPUT_TEXT = 0
 
 
 def start(update: Update, context: CallbackContext) -> None:
-    update.message.reply_text('Hello, welcome, what do you want to do?\n\n Use /qr to generate a QR code.')
+    update.message.reply_text(
+        text='Hello, welcome, what do you want to do?\n\n Use /qr to generate a QR code.',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton(text='Generate QR', callback_data='qr')],
+            [InlineKeyboardButton(text='GitHub Dev', url='https://github.com/ZahiriNatZuke')]
+        ])
+    )
 
 
 def hello(update: Update, context: CallbackContext) -> None:
@@ -17,6 +25,13 @@ def hello(update: Update, context: CallbackContext) -> None:
 
 def qr_command_handler(update: Update, context: CallbackContext) -> int:
     update.message.reply_text('Send me the text to generate the QR code.')
+    return INPUT_TEXT
+
+
+def qr_callback_handler(update: Update, context: CallbackContext) -> int:
+    query = update.callback_query
+    query.answer()
+    query.edit_message_text(text='Send me the text to generate the QR code.')
     return INPUT_TEXT
 
 
@@ -51,7 +66,8 @@ if __name__ == '__main__':
 
     dp.add_handler(ConversationHandler(
         entry_points=[
-            CommandHandler('qr', qr_command_handler)
+            CommandHandler('qr', qr_command_handler),
+            CallbackQueryHandler(pattern='qr', callback=qr_callback_handler)
         ],
         states={
             INPUT_TEXT: [MessageHandler(Filters.text, input_text_handler)]
