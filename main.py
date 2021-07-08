@@ -154,7 +154,7 @@ if __name__ == '__main__':
     dp.add_handler(ConversationHandler(
         entry_points=[
             CallbackQueryHandler(pattern='qr', callback=qr_callback_handler),
-            CallbackQueryHandler(pattern='short_url', callback=throw_coin_callback_handler),
+            CallbackQueryHandler(pattern='short_url', callback=short_url_callback_handler),
             CallbackQueryHandler(pattern='throw_coin', callback=throw_coin_callback_handler)
         ],
         states={
