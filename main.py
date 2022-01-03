@@ -1,4 +1,4 @@
-from pyshorteners.exceptions import ShorteningErrorException
+from pyshorteners.exceptions import ShorteningErrorException, BadAPIResponseException
 from telegram import Update, ParseMode
 from telegram import ChatAction
 from telegram.ext import (
@@ -80,9 +80,9 @@ def throw_coin_callback_handler(update: Update, context: CallbackContext) -> int
     return ConversationHandler.END
 
 
-def generate_qr(text: str) -> str:
+def generate_qr(text: str, filename: str) -> str:
     img = qrcode.make(text)
-    filename = text + ' [pyBot].png'
+    filename = filename + ' [pyBot].png'
     img.save(filename)
     return filename
 
@@ -94,8 +94,9 @@ def send_qr(filename: str, chat):
 
 
 def input_text_handler(update: Update, context: CallbackContext):
+    text = update.message.text
     ts = time.time()
-    filename = generate_qr(str(ts))
+    filename = generate_qr(text=text, filename=str(ts))
     chat = update.message.chat
     send_qr(filename, chat)
     return ConversationHandler.END
@@ -111,6 +112,11 @@ def input_url_handler(update: Update, context: CallbackContext):
         chat.send_action(action=ChatAction.TYPING, timeout=300)
         chat.send_message(text=short_url)
     except ShorteningErrorException:
+        chat.send_message(
+            text='<i>There was an error on trying to short the url:</i> <b>Invalid URL format</b>',
+            parse_mode=ParseMode.HTML
+        )
+    except BadAPIResponseException:
         chat.send_message(
             text='<i>There was an error on trying to short the url:</i> <b>Invalid URL format</b>',
             parse_mode=ParseMode.HTML
