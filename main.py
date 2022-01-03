@@ -1,3 +1,4 @@
+from pyshorteners.exceptions import ShorteningErrorException
 from telegram import Update, ParseMode
 from telegram import ChatAction
 from telegram.ext import (
@@ -18,6 +19,7 @@ import logging
 import html
 import json
 import traceback
+import time
 
 INPUT_TEXT = 0
 INPUT_URL = 1
@@ -54,7 +56,7 @@ def throw_coin(update: Update, context: CallbackContext):
 # /qr
 def qr_callback_handler(update: Update, context: CallbackContext) -> int:
     query = update.callback_query
-    query.answer()
+    query.answer(text='QR')
     query.edit_message_text(text='Send me the text to generate the QR code.')
     return INPUT_TEXT
 
@@ -62,7 +64,7 @@ def qr_callback_handler(update: Update, context: CallbackContext) -> int:
 # /short_url
 def short_url_callback_handler(update: Update, context: CallbackContext) -> int:
     query = update.callback_query
-    query.answer()
+    query.answer('Short URL')
     query.edit_message_text(text='Send me a link to shorten it.')
     return INPUT_URL
 
@@ -70,7 +72,7 @@ def short_url_callback_handler(update: Update, context: CallbackContext) -> int:
 # /throw_coin callback
 def throw_coin_callback_handler(update: Update, context: CallbackContext) -> int:
     query = update.callback_query
-    query.answer()
+    query.answer('Throw Coin')
     query.edit_message_text(text='Good Luck.')
 
     msg = '⚫️ Heads' if random.randint(1, 2) == 1 else '⚪️ Tails'
@@ -80,20 +82,20 @@ def throw_coin_callback_handler(update: Update, context: CallbackContext) -> int
 
 def generate_qr(text: str) -> str:
     img = qrcode.make(text)
-    filename = text + '_pyBot.png'
+    filename = text + ' [pyBot].png'
     img.save(filename)
     return filename
 
 
 def send_qr(filename: str, chat):
-    chat.send_action(action=ChatAction.UPLOAD_PHOTO, timeout=None)
+    chat.send_action(action=ChatAction.UPLOAD_PHOTO, timeout=300)
     chat.send_photo(photo=open(filename, 'rb'))
     os.unlink(filename)
 
 
 def input_text_handler(update: Update, context: CallbackContext):
-    text = update.message.text
-    filename = generate_qr(text)
+    ts = time.time()
+    filename = generate_qr(str(ts))
     chat = update.message.chat
     send_qr(filename, chat)
     return ConversationHandler.END
@@ -101,13 +103,19 @@ def input_text_handler(update: Update, context: CallbackContext):
 
 def input_url_handler(update: Update, context: CallbackContext):
     url = update.message.text
-
-    s = pyshorteners.Shortener()
-    short_url = s.chilpit.short(url)
-
     chat = update.message.chat
-    chat.send_action(action=ChatAction.TYPING, timeout=None)
-    chat.send_message(text=short_url)
+
+    s = pyshorteners.Shortener(api_key=os.environ['CUTTLY_API_KEY'])
+    try:
+        short_url = s.cuttly.short(url)
+        chat.send_action(action=ChatAction.TYPING, timeout=300)
+        chat.send_message(text=short_url)
+    except ShorteningErrorException:
+        chat.send_message(
+            text='<i>There was an error on trying to short the url:</i> <b>Invalid URL format</b>',
+            parse_mode=ParseMode.HTML
+        )
+
     return ConversationHandler.END
 
 
